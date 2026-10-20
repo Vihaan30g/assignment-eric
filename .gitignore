@@ -1,2 +1,11 @@
-data/assignment1.v1i.yolov11
-
+data/
+runs/
+pretrained/
+*.onnx
+*.engine
+*.tflite
+*_openvino_model/
+__pycache__/
+.venv/
+*.pt
+!weights/*.pt*.pt
