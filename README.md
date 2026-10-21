@@ -358,12 +358,10 @@ output is included. Stereo depth requires calibrated and rectified cameras.
 
 **YouTube demo placeholder — upload link not available yet.**
 
-[▶ Watch the full project demo video (replace placeholder after upload)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+[▶ Watch the full project demo video on YouTube](https://youtu.be/lSo4V8ctqcc)
 
-The planned screen recording will show the complete live run: start the camera,
-bring objects into view, present a stop sign, show the resulting depth estimate,
-and observe `1` published on the ROS2 `/stop_signal` topic. After uploading to
-YouTube, replace this placeholder link with the video URL.
+The video demonstrates the live run, including objects in the camera view, a
+stop sign, the resulting depth estimate, and the ROS2 `/stop_signal` output.
 
 ## Limitations and TODO
 
