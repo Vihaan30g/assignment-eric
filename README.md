@@ -1,61 +1,89 @@
 # Realtime Road-Object Stop Signal
 
-This project runs the trained YOLO11 detector and sign classifier on camera frames, estimates ranges for stop-triggering objects, annotates the feed, and publishes a ROS2 stop signal. Models are loaded once at startup; this repository's inference pipeline does not retrain them.
+This project uses trained YOLO11 detector and sign-classifier models to detect
+road objects, classify relevant signs and traffic lights, estimate object
+distance, annotate camera/video frames, and publish a ROS2 stop signal. Models
+are loaded for inference; this runtime pipeline does not retrain them.
+
+Detector classes are `barrier`, `cone`, `signBoard`, and `trafficLight`.
+The sign classifier outputs `barrier_ahead`, `other`, and `stop`.
 
 ## Repository structure
 
 ```text
-configs/       camera, object-size, detector-role, and pipeline settings
-src/           inference modules and realtime pipeline
-scripts/       run entry point, image-test utility, and development checks
-weights/       trained detector and sign-classifier checkpoints
-data/          datasets (local, ignored by git)
-results/demo/  annotated image-test outputs and detections.csv
+configs/       camera, object-size, model-role, and pipeline settings
+src/           detector, classifiers, distance estimators, ROS2, and pipeline
+src/extras/    bird's-eye homography, optical flow, and stereo depth demos
+scripts/       run entry point, image test, and benchmark
+weights/       trained checkpoints and exported ONNX model
+data/          local datasets, calibration image, and test video
+results/       image tests, benchmark reports, and extra-credit outputs
+docs/          stereo epipolar derivation
 ```
 
-## Run the live pipeline
+## How to run
 
-The default source is camera index `0`. The entry point activates the existing ML environment and ROS2 Humble environment in the required order:
+The existing ML and ROS2 environments are activated by the run script. From
+the repository root, launch the live pipeline on camera index `0`:
 
 ```bash
-cd /home/marsuser/assignment-eric
 ./scripts/run_all.sh
 ```
 
-To select a camera, detector/classifier checkpoint, confidence, or output video:
+Choose a video/image source or model variants and options as needed:
 
 ```bash
-cd /home/marsuser/assignment-eric
-./scripts/run_all.sh --source 0 --detector y11s --classifier sign_s --conf 0.35
+./scripts/run_all.sh --source data/videos/flow_test.mp4 --detector y11s --classifier sign_s --conf 0.35
 ```
 
-`--source` also accepts a video path, image path, or image folder. `--device auto` selects CUDA when available and CPU otherwise. Use `--no-display` for headless execution, `--no-ros` for console-only signal output, `--save-video results/demo/live.mp4` to record annotated frames, or `--max-frames N` for a bounded run. Press `q` to quit the display.
+`--source` accepts a camera index, video, image, or image folder. `--device auto`
+selects CUDA when available; use `--no-display` for headless operation,
+`--no-ros` for console-only output, `--save-video results/demo/live.mp4` to
+record annotated frames, or `--max-frames N` to bound a run.
 
-Run an offline test over a small sample of the held-out images:
+Run the held-out image test or reproduce the edge benchmark with the existing
+environment:
 
 ```bash
-cd /home/marsuser/assignment-eric
 source /home/marsuser/ml_env/bin/activate
 python scripts/run_image_test.py --max-images 6
+python scripts/benchmark.py
 ```
 
-The test writes annotated images and `results/demo/detections.csv`.
+The image test writes annotated images and `results/demo/detections.csv`.
+Benchmark artifacts are `results/benchmark.csv`, `results/benchmark.md`, and
+`results/fps_comparison.png`.
 
-## Configuration
+## Distance estimation
 
-Edit [configs/camera.yaml](configs/camera.yaml) with calibrated `fx_px`, `fy_px`, principal point (`cx_px`, `cy_px`), calibration image dimensions, and distortion coefficients. The initial horizontal FOV is only an assumption. If pixel focal length is unavailable, provide both `sensor_width_mm` and `focal_length_mm`; otherwise geometry uses the configured FOV. `depth_scale` optionally rescales model depth.
+Geometry range uses the pinhole-camera relation
 
-Edit [configs/object_sizes.yaml](configs/object_sizes.yaml) to replace approximate heights and widths for barriers, cones, traffic lights, and sign types. Geometry uses the configured height by default.
+```text
+Z = f * H / h
+```
 
-Edit `HSV_RANGES`, `SATURATION_MIN`, `VALUE_MIN`, and `MIN_COLOR_PIXEL_FRACTION` at the top of [src/traffic_light.py](src/traffic_light.py) to tune traffic-light color segmentation for the camera.
+where `Z` is estimated distance, `f` is focal length in pixels, `H` is the
+configured real object height in metres, and `h` is the detected bounding-box
+height in pixels. Width-based estimation uses the analogous known-width and
+pixel-width quantities. Focal length is taken from `fx_px`/`fy_px`, derived
+from sensor and lens dimensions, or estimated from the configured horizontal
+field of view. Object dimensions are in [configs/object_sizes.yaml](configs/object_sizes.yaml).
 
-[configs/pipeline.yaml](configs/pipeline.yaml) selects the trained detector/classifier weights, detector class-to-role mapping, default variants, thresholds, device, camera source, and ROS topic. The detector names verified from the trained weights are `barrier`, `cone`, `signBoard`, and `trafficLight`; the classifier outputs `barrier_ahead`, `other`, and `stop`.
+The pipeline can also estimate depth using the configured depth model for
+trigger frames. If both geometry and depth estimates are available, both are
+shown; otherwise it displays whichever estimate is available. The geometry
+method assumes an accurate object dimension and camera focal length, so its
+accuracy is limited by the current uncalibrated camera configuration.
 
 ## Stop logic and ROS2
 
-Each processed frame publishes `std_msgs/Int32` to `stop_signal` (`/stop_signal` when viewed as a ROS graph name). The value is `1` if the frame contains any detected barrier, a red traffic light, a sign classified as `stop`, or a sign classified as `barrier ahead`; otherwise it is `0`. A message is published for every processed frame. Depth inference is skipped on frames with no trigger, and runs once per trigger frame. Trigger objects are reported with geometry and depth distances when both are available.
+The pipeline asserts stop (`1`) if a frame contains a detected barrier, a red
+traffic light, a sign classified as `stop`, or a sign classified as
+`barrier ahead`; otherwise it publishes `0`. A `std_msgs/Int32` is published
+for every processed frame to the configured `stop_signal` topic (ROS graph
+name `/stop_signal`). Depth inference runs only on trigger frames.
 
-Observe the topic from another terminal after sourcing ROS2:
+Inspect messages and publish rate in another ROS2-sourced terminal:
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -63,62 +91,85 @@ timeout 10 ros2 topic echo /stop_signal
 timeout 10 ros2 topic hz /stop_signal
 ```
 
-## Edge Optimization
+## Edge optimization
 
-Hardware: **CPU:** AMD Ryzen 9 5950X 16-Core Processor; **GPU:** NVIDIA RTX A4000.
-
-Fixed sample: 50 images; 10 warmup inferences; 40 timed inferences per configuration with fixed 640x640 input. Inference uses `rect=False`. Validation: `data/assignment1_clean/data.yaml` with `split=test`, `imgsz=640`, `batch=1`.
-
-On this Ultralytics 8.4 installation, FP16 uses `quantize=16`, the supported replacement for the deprecated `half=True` argument.
+Hardware: **CPU:** AMD Ryzen 9 5950X 16-Core Processor; **GPU:** NVIDIA RTX
+A4000. The benchmark used 50 fixed test images, 10 warmup inferences, and 40
+timed inferences per configuration at `imgsz=640`, `batch=1`, `rect=False`.
+Accuracy is mAP50 on the configured test split.
 
 | Configuration | Device | Precision | Mean latency (ms) | FPS | mAP50 | Status / notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| y11s GPU FP32 | cuda:0 | FP32 | 5.9785 | 167.2674 | 0.965556 | ok |
-| y11s CPU FP32 | cpu | FP32 | 61.9163 | 16.1508 | 0.965577 | ok |
-| y11n GPU FP32 | cuda:0 | FP32 | 5.9626 | 167.7121 | 0.958561 | ok |
-| y11n CPU FP32 | cpu | FP32 | 25.4075 | 39.3584 | 0.958549 | ok |
-| y11n GPU FP16 | cuda:0 | FP16 | 5.8234 | 171.7221 | 0.958893 | ok |
-| y11n ONNX CPU | CPU | ONNX FP32 | 70.4948 | 14.1855 | — | mAP50 skipped; benchmarked with ONNX Runtime 1.23.2. |
-| y11n INT8 | N/A | INT8 | — | — | — | INT8: skipped; a quantization runtime is present, but this benchmark does not assume a calibrated INT8 export path or install/configure one. |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| y11s GPU | cuda:0 | FP32 | 5.9785 | 167.2674 | 0.965556 | measured |
+| y11s CPU | cpu | FP32 | 61.9163 | 16.1508 | 0.965577 | measured |
+| y11n GPU | cuda:0 | FP32 | 5.9626 | 167.7121 | 0.958561 | measured |
+| y11n CPU | cpu | FP32 | 25.4075 | 39.3584 | 0.958549 | measured |
+| y11n GPU | cuda:0 | FP16 | 5.8234 | 171.7221 | 0.958893 | measured; Ultralytics `quantize=16` |
+| y11n ONNX | CPU | FP32 | 70.4948 | 14.1855 | — | ONNX Runtime; mAP50 not measured |
+| y11n INT8 | — | INT8 | — | — | — | skipped; calibrated INT8 export path not configured |
 
-### Before vs after
+Before optimization, y11s GPU FP32 measured 167.27 FPS at mAP50 0.9656.
+Afterward, y11n GPU FP16 measured 171.72 FPS (1.03×) at mAP50 0.9589.
+This is a small speed increase with a 0.0067 lower mAP50; y11n CPU FP32
+measured 39.36 FPS. On the installed Ultralytics version, FP16 uses
+`quantize=16`, the supported alternative to deprecated `half=True`.
 
-Before: y11s GPU FP32 measured 167.27 FPS at mAP50 0.9656.
-After: y11n GPU FP16 measured 171.72 FPS (1.03x) at mAP50 0.9589.
-Trade-off: FP16 y11n mAP50 changed by -0.0067; y11n CPU FP32 was 39.3584 FPS.
-
-ONNX: exported to `weights/export/y11n_best.onnx` and benchmarked on CPU. INT8: skipped; a quantization runtime is present, but this benchmark does not assume a calibrated INT8 export path or install/configure one.
-
-## Extra Credit
-
-The reference inputs are `data/calib/homography_ref.jpg` and `data/videos/flow_test.mp4`. Demo outputs are saved in `results/extras/`.
+## Extra credit
 
 ### Ground-plane homography
 
-Calibration is still pending the four real corner clicks; no pixel points or bird's-eye result have been fabricated. Run:
+The four-point calibration is **not yet completed**: the reference image is
+available at `data/calib/homography_ref.jpg`, but no user-selected calibration
+points have been saved and no real bird's-eye result is claimed. To calibrate:
 
 ```bash
-cd ~/assignment-eric && source /home/marsuser/ml_env/bin/activate && python -m src.extras.birdseye --select-points
+python -m src.extras.birdseye --select-points
 ```
 
-Click top-left, top-right, bottom-right, then bottom-left (clockwise from the far edge); press `r` to reset and `s` to save. The tool checks corner reprojection and then writes `results/extras/birdseye_real.png` with a 10 cm metric grid and detector markers.
-
-The camera is uncalibrated and lens distortion is ignored. This mapping applies only to the flat plane containing the sheet; accuracy decreases away from the sheet, and the camera must not move after calibration.
+Click top-left, top-right, bottom-right, bottom-left (clockwise from the far
+edge); use `r` to reset and `s` to save. The output, once calibrated, is
+`results/extras/birdseye_real.png`. The camera is uncalibrated and lens
+distortion is ignored; this homography applies only to the flat plane of the
+reference rectangle, becomes less accurate away from that plane, and requires
+the camera to remain still.
 
 ### Global-motion-compensated optical flow
 
-![Real optical-flow representative frame](results/extras/optical_flow_real.png)
+![Optical-flow representative frame](results/extras/optical_flow_real.png)
 
-Run automatic detection every third frame across the full supplied clip:
+On `data/videos/flow_test.mp4`, automatic detection every third frame found the
+cone at frame 36. The generated annotated clip is
+`results/extras/optical_flow_real.mp4`, with per-frame pixel velocities in
+`results/extras/optical_flow_real.csv`.
 
 ```bash
-cd ~/assignment-eric && source /home/marsuser/ml_env/bin/activate && python -m src.extras.optical_flow --source data/videos/flow_test.mp4 --no-display
+python -m src.extras.optical_flow --source data/videos/flow_test.mp4 --no-display
 ```
 
-This run found the cone at frame 36 (object ID 1) in automatic mode. The annotated [video](results/extras/optical_flow_real.mp4) and per-frame velocity [CSV](results/extras/optical_flow_real.csv) accompany the representative frame above. If automatic detection fails on another clip, `--roi x,y,w,h --start-frame N` or `--select-roi --start-frame N` starts manual tracking at frame `N`.
-
-Lucas–Kanade object flow is corrected by median background flow; `MOVING` uses the configured px/s threshold. This is image-plane velocity, not world velocity, and assumes a mostly static camera; camera motion is only approximately removed.
+Lucas–Kanade object flow subtracts median background flow to approximately
+compensate for camera shake. Velocity is in image pixels per second, not world
+units. Camera motion may not be fully removed, and the method works best with a
+mostly static camera. If automatic detection misses an object, use
+`--roi x,y,w,h --start-frame N` or the interactive
+`--select-roi --start-frame N` option.
 
 ### Stereo depth
 
-[docs/epipolar_derivation.md](docs/epipolar_derivation.md) derives `Z = fB/d`; [src/extras/epipolar.py](src/extras/epipolar.py) provides disparity/depth conversion and a StereoSGBM demo. No real left/right stereo pair was supplied, so no disparity output was generated.
+[docs/epipolar_derivation.md](docs/epipolar_derivation.md) derives
+`Z = fB/d`; [src/extras/epipolar.py](src/extras/epipolar.py) includes disparity
+and depth conversions and a StereoSGBM demo. No real stereo image pair was
+provided, so no stereo depth output is included.
+
+## Limitations and TODO
+
+- **Camera calibration is not done.** [configs/camera.yaml](configs/camera.yaml)
+  still uses placeholder intrinsics and a 70° horizontal-FOV assumption;
+  distortion is not calibrated.
+- **Model pruning is not done.** The benchmark compares available model
+  variants and precisions; it does not prune or retrain the trained weights.
+- Object dimensions are approximate and should be measured for the target
+  objects and environment.
+- Geometry range is sensitive to camera focal length and object-size errors;
+  stereo depth requires a calibrated, rectified camera pair.
+- Homography is limited to its calibrated flat plane. Optical flow assumes a
+  mostly static camera and reports pixel-space motion.
