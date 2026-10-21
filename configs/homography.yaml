@@ -1,0 +1,8 @@
+# USER: replace the points by clicking the four corners in homography_ref.jpg.
+plane_width_m: 0.210
+plane_length_m: 0.297
+grid_spacing_m: 0.10
+reference_image: data/calib/homography_ref.jpg
+reference_size_px: null
+src_points_px: []
+homography_px_to_m: null

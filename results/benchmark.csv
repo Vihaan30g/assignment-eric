@@ -1,0 +1,8 @@
+config,model,device,precision,mean_latency_ms,fps,mAP50,status,notes
+y11s GPU FP32,y11s,cuda:0,FP32,5.9785,167.2674,0.965556,ok,
+y11s CPU FP32,y11s,cpu,FP32,61.9163,16.1508,0.965577,ok,
+y11n GPU FP32,y11n,cuda:0,FP32,5.9626,167.7121,0.958561,ok,
+y11n CPU FP32,y11n,cpu,FP32,25.4075,39.3584,0.958549,ok,
+y11n GPU FP16,y11n,cuda:0,FP16,5.8234,171.7221,0.958893,ok,
+y11n ONNX CPU,y11n,CPU,ONNX FP32,70.4948,14.1855,,ok,mAP50 skipped; benchmarked with ONNX Runtime 1.23.2.
+y11n INT8,y11n,N/A,INT8,,,,skipped,"INT8: skipped; a quantization runtime is present, but this benchmark does not assume a calibrated INT8 export path or install/configure one."

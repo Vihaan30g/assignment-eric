@@ -11,3 +11,4 @@ camera:
   hfov_deg: 70.0
   distortion_coeffs: []
   depth_scale: 1.0
+  stereo_baseline_m: 0.12 # USER: replace with the measured left-to-right camera spacing.

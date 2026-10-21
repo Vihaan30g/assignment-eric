@@ -1,0 +1,3 @@
+moving_threshold_px_per_sec: 30.0
+detector_confidence: 0.35
+image_size: 640
