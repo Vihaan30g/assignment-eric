@@ -1,0 +1,13 @@
+# USER: replace these placeholders with calibrated camera values.
+camera:
+  fx_px: null
+  fy_px: null
+  cx_px: null
+  cy_px: null
+  image_width_px: null
+  image_height_px: null
+  sensor_width_mm: null
+  focal_length_mm: null
+  hfov_deg: 70.0
+  distortion_coeffs: []
+  depth_scale: 1.0

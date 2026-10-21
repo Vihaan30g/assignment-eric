@@ -1,0 +1,10 @@
+{
+  "model": "yolo11s-cls.pt",
+  "name": "sign_s",
+  "top1": 0.8441558480262756,
+  "classes": [
+    "barrier_ahead",
+    "other",
+    "stop"
+  ]
+}

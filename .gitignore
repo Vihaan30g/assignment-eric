@@ -6,6 +6,9 @@ pretrained/
 *.tflite
 *_openvino_model/
 __pycache__/
+*.pyc
+*.cache
+runs/*/events.out.tfevents*
 .venv/
 *.pt
 !weights/*.pt*.pt.vscode/

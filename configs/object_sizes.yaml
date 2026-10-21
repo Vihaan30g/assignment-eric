@@ -1,0 +1,21 @@
+# USER: refine these approximate dimensions for the specific objects in your environment.
+# All dimensions are in metres; geometry distance uses height_m by default.
+objects:
+  barrier:
+    height_m: 0.80
+    width_m: 1.50
+  cone:
+    height_m: 0.70
+    width_m: 0.35
+  traffic_light:
+    height_m: 0.90
+    width_m: 0.30
+  sign_board:
+    height_m: 0.75
+    width_m: 0.75
+  stop_sign:
+    height_m: 0.75
+    width_m: 0.75
+  barrier_ahead_sign:
+    height_m: 0.75
+    width_m: 0.75

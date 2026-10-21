@@ -1,0 +1,30 @@
+models:
+  detectors:
+    y11n: weights/y11n_best.pt
+    y11s: weights/y11s_best.pt
+  classifiers:
+    sign_n: weights/sign_n_best.pt
+    sign_s: weights/sign_s_best.pt
+  default_detector: y11s
+  default_classifier: sign_s
+  depth_model: vits14
+  depth_enabled: true
+
+detection:
+  confidence: 0.35
+  image_size: 640
+
+class_roles:
+  barrier: barrier
+  cone: cone
+  signBoard: sign_board
+  trafficLight: traffic_light
+
+sign_labels:
+  barrier_ahead: barrier ahead
+  other: others
+  stop: stop
+
+camera_source: "0"
+device: auto
+topic: stop_signal
