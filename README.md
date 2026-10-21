@@ -1,5 +1,7 @@
 # Real-Time Road-Object Detection, Depth Estimation, and Stop Signaling
 
+**Author:** Vihaan Gupta
+
 ## Abstract
 
 I chose this mini project because I had not previously explored how a model
@@ -16,9 +18,7 @@ It classifies sign-board crops and traffic-light color, estimates distance for
 objects, annotates the camera view, and publishes an integer stop state. Depth
 inference is run only when a frame contains a stop-triggering object.
 
-**Demo video:** [Jump to the demo video placeholder](#demo-video). The complete
-screen-recorded demo will be uploaded to YouTube; its link will replace the
-placeholder when available.
+**Demo video:** [Watch the recorded project demo](https://youtu.be/lSo4V8ctqcc).
 
 ## Contents
 
@@ -33,6 +33,7 @@ placeholder when available.
 - [Extra-credit modules](#extra-credit-modules)
 - [Demo video](#demo-video)
 - [Limitations and TODO](#limitations-and-todo)
+- [Contact](#contact)
 
 ## Project overview
 
@@ -385,3 +386,10 @@ stop sign, the resulting depth estimate, and the ROS2 `/stop_signal` output.
 - **Full-pipeline performance differs from detector benchmark speed.** Sign
   classification, triggered depth inference, image display, and ROS2 publishing
   add work that is not included in the detector-only FPS table.
+
+## Contact
+
+- **Name:** Vihaan Gupta
+- **Mobile:** +91 9399929308
+- **Email:** [vihaan30g@gmail.com](mailto:vihaan30g@gmail.com)
+- **Portfolio:** [vihaan30g.github.io](https://vihaan30g.github.io)
