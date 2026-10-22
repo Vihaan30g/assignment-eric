@@ -4,19 +4,17 @@
 
 ## Abstract
 
-I chose this mini project because I had not previously explored how a model
-estimates depth from RGB image data. I used the project as an opportunity to
-study monocular depth estimation alongside object detection and to connect
-those results to a live robotics-style response. The application combines
-trained object-detection and sign-classification models with a UniDepth V2
-monocular depth model, geometry-based distance estimation, and ROS2 stop
-signaling. The models are used for inference; the runtime application does not
-retrain them.
+This was orignally an assignment, but I have really used it for my benefit. I had not previously explored how a model estimates depth from RGB image data. I used thia project as an opportunity to study monocular depth estimation alongside object detection and to connect those results to a live robotics-style response. The project combines trained object-detection and sign-classification models with a UniDepth V2 monocular depth model, geometry-based distance estimation, and ROS2 stop signaling.
 
-The live workflow detects barriers, cones, sign boards, and traffic lights.
-It classifies sign-board crops and traffic-light color, estimates distance for
-objects, annotates the camera view, and publishes an integer stop state. Depth
-inference is run only when a frame contains a stop-triggering object.
+
+**The complete pipeline in brief :** 
+<br><br>
+First we run a yolov11 model that detects objects of 4 classes - barriers, cones, sign boards, and traffic lights.<br>
+If it detects a barrier, red traffic light, a "stop" sign or a "barrier ahead" sign, then we must stop our robot, in which case we publish a signal 1 on a ros2 topic.<br>
+But to actually detect if its a "stop"/"barrier ahead" sign, we use another model trained to classify the sign boards. And it runs only when the previous model detects a sign board.<br>
+To detect if the traffic light detected is of red color, we crop and extract the detected traffic-light portion from the input-image and then using openCV, detect the color of it.<br>
+Then we run the depth estimation model for such objects finally.<br>
+
 
 **Demo video:** [Watch the recorded project demo](https://youtu.be/lSo4V8ctqcc).
 
